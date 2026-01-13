@@ -20,10 +20,10 @@ const [loading, setLoading] = useState(true);
   
   const [newActivity, setNewActivity] = useState({ 
     title: '', 
-    date: '', 
-    endDate: '',
+    date: '2026-05-31', 
+    endDate: '2026-05-31',
     emoji: '☀️',
-    attendees: [1, 2, 3, 4],
+    attendees: [],
     confirmed: true
   });
   
@@ -48,7 +48,13 @@ const loadActivities = async () => {
       .select('*')
       .order('date', { ascending: true });
     if (error) throw error;
-    setActivities(data || []);
+   
+const mappedData = (data || []).map(activity => ({
+  ...activity,
+  endDate: activity.end_date
+}));
+
+setActivities(mappedData);
   } catch (error) {
     console.error('Error loading activities:', error);
   } finally {
@@ -64,7 +70,7 @@ const addActivity = async () => {
         .insert([{
           title: newActivity.title,
           date: newActivity.date,
-          end_date: newActivity.end_date || null,
+          end_date: newActivity.endDate || null,
           emoji: newActivity.emoji,
           attendees: newActivity.attendees,
           confirmed: newActivity.confirmed,
@@ -126,7 +132,7 @@ const saveEditActivity = async () => {
       .update({
         title: editingActivity.title,
         date: editingActivity.date,
-        end_date: editingactivity.end_date || null,
+        end_date: editingActivity.endDate || null,
         emoji: editingActivity.emoji,
         attendees: editingActivity.attendees,
         confirmed: editingActivity.confirmed
@@ -134,7 +140,7 @@ const saveEditActivity = async () => {
       .eq('id', editingActivity.id);
     if (error) throw error;
     setActivities(activities.map(a => 
-      a.id === editingActivity.id ? { ...editingActivity, end_date: editingactivity.end_date } : a
+      a.id === editingActivity.id ? editingActivity : a
     ));
     setEditingActivity(null);
   } catch (error) {
@@ -146,9 +152,12 @@ const saveEditActivity = async () => {
     setEditingActivity(null);
   };
 
-  const updateEditField = (field, value) => {
-    setEditingActivity({ ...editingActivity, [field]: value });
-  };
+const updateEditField = (field, value) => {
+  console.log('UPDATE:', field, '=', value);
+  console.log('Before:', editingActivity[field]);
+  setEditingActivity({ ...editingActivity, [field]: value });
+  console.log('After should be:', value);
+};
 
   const toggleEditAttendee = (memberId) => {
     if (editingActivity.attendees.includes(memberId)) {
@@ -283,17 +292,10 @@ const saveWeekActivity = async () => {
         weekDays.push(day);
       }
       
-      const weekActivitiesMap = new Map();
-      weekDays.forEach(day => {
-        const dayActivities = getActivitiesForDate(day);
-        dayActivities.forEach(activity => {
-          if (!weekActivitiesMap.has(activity.id)) {
-            weekActivitiesMap.set(activity.id, activity);
-          }
-        });
-      });
-      
-      const weekActivities = Array.from(weekActivitiesMap.values());
+      const weekActivities = [...new Map(
+weekDays.flatMap(day => getActivitiesForDate(day))
+    .map(a => [a.id, a])
+).values()];
       
       weeks.push({
         start: new Date(currentWeekStart),
@@ -464,7 +466,7 @@ if (loading) {
             />
             <input
               type="date"
-              value={newActivity.end_date}
+              value={newActivity.endDate}
               onChange={(e) => setNewActivity({ ...newActivity, endDate: e.target.value })}
               placeholder="End date (optional)"
               className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-teal-400 focus:outline-none"
@@ -555,7 +557,8 @@ if (loading) {
                           let dateDisplay;
                           if (activityEndDate) {
                             const endDayName = activityEndDate.toLocaleDateString('en-US', { weekday: 'short' });
-                            dateDisplay = dayName + '-' + endDayName + ', ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '-' + activityEndDate.getDate();
+                            dateDisplay = dayName + '-' + endDayName + ', ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '-' + activityEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
                           } else {
                             dateDisplay = dayName + ', ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                           }
@@ -1081,7 +1084,7 @@ if (loading) {
                     <label className="block text-sm font-medium text-gray-700 mb-2">End Date (optional)</label>
                     <input
                       type="date"
-                      value={editingactivity.end_date || ''}
+                      value={editingActivity.end_date || ''}
                       onChange={(e) => updateEditField('endDate', e.target.value)}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-teal-400 focus:outline-none"
                     />
