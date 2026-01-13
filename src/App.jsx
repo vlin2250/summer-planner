@@ -28,7 +28,7 @@ const [loading, setLoading] = useState(true);
   });
   
   const [view, setView] = useState('all');
-  const [viewMode, setViewMode] = useState('summer');
+  const [viewMode, setViewMode] = useState('grid');
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
   const [editingActivity, setEditingActivity] = useState(null);
@@ -79,7 +79,7 @@ const addActivity = async () => {
         .select();
       if (error) throw error;
       setActivities([...activities, ...data]);
-      setNewActivity({ title: '', date: '', endDate: '', emoji: '☀️', attendees: [1, 2, 3, 4], confirmed: true });
+      setNewActivity({ title: '', date: '2026-05-31', endDate: '2026-05-31', emoji: '☀️', attendees: [], confirmed: true });
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to add activity');
@@ -233,12 +233,12 @@ const saveWeekActivity = async () => {
     }
   };
 
-  const getDaysUntil = (date) => {
-    const today = new Date();
-    const target = new Date(date);
-    const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-    return diff;
-  };
+const getDaysUntil = (date) => {
+  const today = new Date();
+  const target = new Date(date + 'T00:00:00');
+  const diff = Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+  return diff;
+};
 
   const getFilteredActivities = () => {
     if (view === 'all') return activities;
@@ -264,19 +264,18 @@ const saveWeekActivity = async () => {
     return days;
   };
 
-  const getActivitiesForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return getFilteredActivities().filter(a => {
-      const activityStart = new Date(a.date);
-      const activityEnd = a.endDate ? new Date(a.endDate) : activityStart;
-      const checkDate = new Date(dateStr);
-      return checkDate >= activityStart && checkDate <= activityEnd;
-    });
-  };
+const getActivitiesForDate = (date) => {
+  const dateStr = date.toISOString().split('T')[0];
+  return getFilteredActivities().filter(a => {
+    const activityStart = a.date.split('T')[0]; // Just compare date strings
+    const activityEnd = a.endDate ? a.endDate.split('T')[0] : activityStart;
+    return dateStr >= activityStart && dateStr <= activityEnd;
+  });
+};
 
   const getSummerWeeks = () => {
     const summerStart = new Date('2026-06-01');
-    const summerEnd = new Date('2026-08-31');
+    const summerEnd = new Date('2026-08-16');
     
     const firstDay = new Date(summerStart);
     firstDay.setDate(firstDay.getDate() - firstDay.getDay());
@@ -309,18 +308,19 @@ weekDays.flatMap(day => getActivitiesForDate(day))
     return weeks;
   };
 
-  const formatDateRange = (startDate, endDate) => {
-    const start = new Date(startDate);
-    const end = endDate ? new Date(endDate) : null;
-    
-    if (end) {
-      const startStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
-      const endStr = end.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
-      return startStr + ' - ' + endStr;
-    } else {
-      return start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-    }
-  };
+const formatDateRange = (startDate, endDate) => {
+  // Parse dates as local timezone by adding time component
+  const start = new Date(startDate + 'T00:00:00');
+  const end = endDate ? new Date(endDate + 'T00:00:00') : null;
+  
+  if (end) {
+    const startStr = start.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+    const endStr = end.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' });
+    return startStr + ' - ' + endStr;
+  } else {
+    return start.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  }
+};
 
   const getShareLink = () => {
     const data = {
@@ -371,22 +371,22 @@ if (loading) {
 
         <div className="flex gap-2 mb-4 justify-center flex-wrap">
           <button
-            onClick={() => setViewMode('summer')}
-            className={'px-4 py-2 rounded-lg font-medium transition ' + (viewMode === 'summer' ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
-          >
-            Summer Overview
-          </button>
-          <button
             onClick={() => setViewMode('grid')}
             className={'px-4 py-2 rounded-lg font-medium transition ' + (viewMode === 'grid' ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
           >
             Grid View
+          </button>          
+<button
+            onClick={() => setViewMode('summer')}
+            className={'px-4 py-2 rounded-lg font-medium transition ' + (viewMode === 'summer' ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
+          >
+            Week View
           </button>
           <button
             onClick={() => setViewMode('week')}
             className={'px-4 py-2 rounded-lg font-medium transition ' + (viewMode === 'week' ? 'bg-gradient-to-r from-blue-500 to-teal-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100')}
           >
-            Week View
+            Day View
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -428,13 +428,6 @@ if (loading) {
                 {member.name}
               </button>
             ))}
-            <button
-              onClick={() => setShareModalOpen(true)}
-              className="px-4 py-2 rounded-lg font-medium transition flex items-center gap-2 bg-gray-100 text-gray-700 hover:bg-gray-200"
-            >
-              <Share2 className="w-4 h-4" />
-              Share
-            </button>
           </div>
         </div>
 
@@ -550,18 +543,19 @@ if (loading) {
                     {week.activities.length > 0 ? (
                       <div className="space-y-2">
                         {week.activities.map(activity => {
-                          const activityDate = new Date(activity.date);
-                          const activityEndDate = activity.end_date ? new Date(activity.end_date) : null;
+                          const activityDate = new Date(activity.date + 'T00:00:00');
+const activityEndDate = activity.end_date ? new Date(activity.end_date + 'T00:00:00') : null;
                           const dayName = activityDate.toLocaleDateString('en-US', { weekday: 'short' });
                           
                           let dateDisplay;
-                          if (activityEndDate) {
-                            const endDayName = activityEndDate.toLocaleDateString('en-US', { weekday: 'short' });
-                            dateDisplay = dayName + '-' + endDayName + ', ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + '-' + activityEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-
-                          } else {
-                            dateDisplay = dayName + ', ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                          }
+if (activityEndDate && activity.date !== activity.end_date) {
+  // Multi-day event
+  const endDayName = activityEndDate.toLocaleDateString('en-US', { weekday: 'short' });
+  dateDisplay = dayName + ' ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' - ' + endDayName + ' ' + activityEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+} else {
+  // Single day event
+  dateDisplay = dayName + ' ' + activityDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
                           
                           // Determine colors based on attendees
                           let bgColor = '#dbeafe'; // default blue
@@ -1084,7 +1078,7 @@ if (loading) {
                     <label className="block text-sm font-medium text-gray-700 mb-2">End Date (optional)</label>
                     <input
                       type="date"
-                      value={editingActivity.end_date || ''}
+                      value={editingActivity.endDate || ''}
                       onChange={(e) => updateEditField('endDate', e.target.value)}
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-teal-400 focus:outline-none"
                     />
